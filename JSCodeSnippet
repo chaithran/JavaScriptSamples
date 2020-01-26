@@ -1,0 +1,159 @@
+$('#ddlType').change(function () {
+                var type = this.value;
+                $.ajax({
+                    url: '@Url.Action("LoadDropDowns", "SampleController")',
+                    type: "GET",
+                    data: {
+                        type: type
+                    },
+                    success: function (data) {
+                        debugger;
+                        var taxHtml = "<option value=''>--Select--</option>";
+                        if (data.TaxDrp.length != null && data.TaxDrp.length != 0)
+                            for (var j = 0; j < data.TaxDrp.length; j++) {
+                                taxHtml += "<option value='" + data.TaxDrp[j].Value + "'>" + data.TaxDrp[j].Text + "</option>";
+                            }
+                        $("#idTaxType0").html(taxHtml).show();
+                        $("#idTaxType0").selectpicker('refresh');
+
+                        var levyHtml = "<option value=''>--Select--</option>";
+                        if (data.LevyDrp.length != null && data.LevyDrp.length != 0)
+                            for (var j = 0; j < data.LevyDrp.length; j++) {
+                                levyHtml += "<option value='" + data.LevyDrp[j].Value + "'>" + data.LevyDrp[j].Text + "</option>";
+                            }
+                        $("#idLevyType0").html(levyHtml).show();
+                        $("#idLevyType0").selectpicker('refresh');
+                    },
+                    error: function () {
+                        alert("An error has occured!!!");
+                    }
+                });
+            }
+            
+        function GetXYZGridData() {
+        var isValid = true;
+        dateArray = new Array();
+        amountArrayTmp = new Array();
+        taxTypeArray = new Array();
+        taxAmountArrayTmp = new Array();
+        finalArray = [[], [], [], [], [], []];
+        var length = $('#amountDepositedGrid').DataTable().rows().data().length;
+        dateArray = new Array(length + 1);
+        var amountArray = new Array(length + 1);
+        var amountSumArray = new Array(length + 1);
+        var totalAmt = 0;
+        for (var i = 0; i < length; i++) {
+            dateArray[i] = $('#preDepositDate' + i).val();
+            amountArray[i] = Number($('#preDepositAmt' + i).val());
+            amountSumArray[i] = Number(0);
+        }
+        amountSumArray[i] = Number(0);
+        var finalAmount = $('#txtFinalPaymentAmt').val();
+        var finalDate = $('#finalpaymentdate').val();
+        amountArray[length] = finalAmount;
+        dateArray[length] = finalDate;
+        amountArrayTmp = amountArray.slice();
+
+        var taxlength = document.getElementById("TblTaxType").rows.length;
+        taxTypeArray = new Array(taxlength);
+        var taxAmountArray = new Array(taxlength);
+        for (var i = 0; i < taxlength; i++) {
+            if ($('#idTaxType' + i).val() == "") {
+                $('#errTaxTypeReq' + i).show();
+                isValid = false;
+            }
+            taxTypeArray[i] = $('#idTaxType' + i).val();
+            taxAmountArray[i] = Number($('#idTaxAmount' + i).val());
+            if (taxAmountArray[i] > 0)
+                totalAmt = totalAmt + Number(taxAmountArray[i]);
+        }
+        taxAmountArrayTmp = taxAmountArray.slice();
+        $('#idTotalAmt').val(totalAmt);
+        var k = 0;
+        var finallength = (taxlength);
+        if (isValid == true) {
+            for (var amt = 0; amt < length + 1; amt++) {
+                var check = false;
+                if (amountArray[amt] > 0) {
+                    for (var i = 0; i < finallength; i++) {
+                        for (var j = 0; j < taxlength; j++) {
+                            if (taxAmountArray[j] > 0 && amountArray[amt] > 0) {
+                                if (amountArray[amt] >= taxAmountArray[j]) {
+                                    finalArray[amt][i] = taxAmountArray[j];
+                                    amountSumArray[amt] += taxAmountArray[j];
+                                    amountArray[amt] = amountArray[amt] - taxAmountArray[j];
+                                    taxAmountArray[j] = 0;
+                                    i++;
+                                    check = true;
+                                }
+                                else {
+                                    finalArray[amt][i] = amountArray[amt];
+                                    amountSumArray[amt] += amountArray[amt];
+                                    taxAmountArray[j] = taxAmountArray[j] - amountArray[amt];
+                                    amountArray[amt] = 0;
+                                    i++;
+                                    check = true;
+                                }
+                            }
+                            if (!check) {
+                                i++;
+                                check = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            var taxlength = document.getElementById("TblTaxType").rows.length;
+            var finallength = (taxlength);
+            var tblHeadObj = document.getElementById('tblUpload').tHead;
+            var h = 1;
+            for (var amtRows = 1; amtRows < length + 1; amtRows++) {
+                for (var h = 0; h < tblHeadObj.rows.length; h++) {
+                    var newTH = document.createElement('th');
+                    tblHeadObj.rows[h].appendChild(newTH);
+                    newTH.innerHTML = 'Amount Deposited ' + amtRows;
+                }
+            }
+            var finalAmountTH = document.createElement('th');
+            tblHeadObj.rows[h - 1].appendChild(finalAmountTH);
+            finalAmountTH.innerHTML = "Final Amount";
+
+            var tblBodyObj = document.getElementById('tblUpload').tBodies[0];
+            for (var amtRows = 0; amtRows < length + 1; amtRows++) {
+                for (var k = 0; k < finallength - 1; k++) {
+                    for (var i = 0; i < tblBodyObj.rows.length; i++) {
+                        switch (i) {
+                            case 0:
+                                var newCell = tblBodyObj.rows[i].insertCell(-1);
+                                var tblTaxBodyObj = document.getElementById('TblTaxType').tBodies[0];
+                                var innerHtml = '<table id="TblTaxAmount">';
+                                for (var j = 0; j < tblTaxBodyObj.rows.length; j++) {
+                                    if (finalArray[amtRows][k] === undefined)
+                                        finalArray[amtRows][k] = 0;
+                                    innerHtml += '< tr > <td id="dt' + j + '"><input type="number" class="form-control" disabled="disabled" onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode == 46" onpast="return false" name="amtTax' + j + '" value="' + finalArray[amtRows][k] + '"></td></tr>';
+                                    k++;
+                                }
+                                innerHtml += '</table > ';
+                                newCell.innerHTML = innerHtml;
+                                break;
+
+                            case 7:
+                                var newCell = tblBodyObj.rows[i].insertCell(-1);
+                                var innerHtml = "<table>";
+                                //var value = $('#preDepositAmt' + amtRows).val();
+                                //if (amtRows == (length - 1))
+                                //    value = finalAmount;
+                                innerHtml += '< tr > <td><input type="number" class="form-control" onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode == 46" onpast="return false" disabled="disabled" name="lname" value="' + amountSumArray[amtRows] + '"></td></tr>';
+                                innerHtml += '</table > ';
+                                newCell.innerHTML = innerHtml;
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            return false;
+        }
+    }
